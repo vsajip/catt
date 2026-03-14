@@ -215,6 +215,19 @@ def cli(ctx, device):
     help="Start playback at specific timestamp.",
 )
 @click.option(
+    "-l",
+    "--title",
+    metavar="TITLE",
+    help="Specify a title for the media file.",
+)
+@click.option(
+    "-v",
+    "--volume",
+    type=click.IntRange(0, 100),
+    metavar="LVL",
+    help="Set volume (0-100).",
+)
+@click.option(
     "-b",
     "--block",
     is_flag=True,
@@ -238,6 +251,8 @@ def cast(
     no_playlist: bool,
     ytdl_option,
     seek_to: str,
+    title: str,
+    volume: int,
     stream_type: str,
     block: bool = False,
 ):
@@ -300,20 +315,23 @@ def cast(
         click.echo(
             '{} "{}" on "{}"...'.format(
                 "Showing" if media_is_image else "Playing",
-                stream.video_title,
+                title or stream.video_title,
                 cst.cc_name,
             )
         )
+        if volume is not None:
+            cst.volume(volume / 100.0)
+
         if cst.info_type == "url":
             cst.play_media_url(
                 stream.video_url,
-                title=stream.video_title,
+                title=title or stream.video_title,
                 content_type=stream.guessed_content_type,
                 subtitles=subs.url if subs else None,
                 thumb=stream.video_thumbnail,
                 current_time=seek_to,
-                stream_type=stream.stream_type,
-                media_info=stream.media_info,
+                stream_type=getattr(stream, "stream_type", None),
+                media_info=getattr(stream, "media_info", None),
             )
         elif cst.info_type == "id":
             cst.play_media_id(stream.video_id, current_time=seek_to)
@@ -564,7 +582,19 @@ def scan(json_output):
     devices = get_cast_infos()
 
     if json_output:
-        echo_json({d.friendly_name: d._asdict() for d in devices})
+        echo_json(
+            {
+                d.friendly_name: {
+                    "host": d.host,
+                    "port": d.port,
+                    "uuid": d.uuid,
+                    "model_name": d.model_name,
+                    "friendly_name": d.friendly_name,
+                    "manufacturer": d.manufacturer,
+                }
+                for d in devices
+            }
+        )
     else:
         if not devices:
             raise CastError("No devices found")

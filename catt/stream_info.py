@@ -257,6 +257,9 @@ class StreamInfo:
             raise ExtractionError("yt-dlp extractor failed")
 
     def _get_stream_url(self, info):
+        if info.get("direct"):
+            return info["url"]
+
         try:
             format_selector = self._ydl.build_format_selector(self._best_format)
         except ValueError:
